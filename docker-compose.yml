@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: kpi
+      POSTGRES_PASSWORD: kpi
+      POSTGRES_DB: kpi_hub
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kpi -d kpi_hub"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  azurite:   # local Azure Blob Storage emulator
+    image: mcr.microsoft.com/azure-storage/azurite
+    command: azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck
+    ports: ["10000:10000"]
+
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    env_file: .env
+    environment: &svc_env
+      DATABASE_URL: postgresql+psycopg2://kpi:kpi@postgres:5432/kpi_hub
+      REDIS_URL: redis://redis:6379/0
+      AZURE_STORAGE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      CELERY_ALWAYS_EAGER: "false"
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+      azurite: { condition: service_started }
+
+  worker:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    env_file: .env
+    environment: *svc_env
+    command: celery -A app.worker.celery_app worker -l info --concurrency 2
+    depends_on: [api]
+
+  beat:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    env_file: .env
+    environment: *svc_env
+    command: celery -A app.worker.celery_app beat -l info
+    depends_on: [worker]
+
+volumes:
+  pgdata:

@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KPI & MIS Reporting Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --ink:#1B2430; --muted:#5B6675; --line:#D5DBE2;
+  --primary:#2B4C7E; --primary-ink:#FFFFFF;
+  --green:#2E7D4F; --green-bg:#DCEFE3; --amber:#9A6510; --amber-bg:#FBEBC8;
+  --red:#A83232; --red-bg:#F6D9D9; --na-bg:#E6E9ED;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+.num,td.n,input[type=number]{font-variant-numeric:tabular-nums}
+header{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--ink);color:#fff;flex-wrap:wrap}
+header h1{font-size:16px;font-weight:600;margin:0;flex:1}
+header label{font-size:12px;color:#C9D1DB}
+header input,header select{background:#2A3544;color:#fff;border:1px solid #3B4757;border-radius:4px;padding:5px 8px;font:inherit}
+#aimode{font-size:12px;color:#C9D1DB}
+.layout{display:grid;grid-template-columns:200px 1fr;min-height:calc(100vh - 48px)}
+nav{background:var(--surface);border-right:1px solid var(--line);padding:12px 0}
+nav button{display:block;width:100%;text-align:left;padding:9px 20px;border:0;background:none;font:inherit;color:var(--muted);cursor:pointer;border-left:3px solid transparent}
+nav button:hover{color:var(--ink);background:#F4F6F8}
+nav button.active{color:var(--ink);font-weight:600;border-left-color:var(--primary);background:#F0F3F7}
+main{padding:20px 28px;max-width:1300px;overflow-x:hidden}
+h2{font-size:20px;font-weight:600;margin:0 0 4px}
+h3{font-size:15px;font-weight:600;margin:22px 0 8px}
+p.lead{color:var(--muted);margin:0 0 16px;max-width:70ch}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px}
+.bar label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px}
+input,select,textarea{font:inherit;border:1px solid var(--line);border-radius:4px;padding:6px 8px;background:#fff;color:var(--ink)}
+textarea{width:100%;min-height:220px;line-height:1.55}
+button.btn{font:inherit;border:1px solid var(--primary);background:var(--primary);color:var(--primary-ink);border-radius:4px;padding:6px 14px;cursor:pointer}
+button.btn.ghost{background:#fff;color:var(--primary)}
+button.btn.danger{background:#fff;color:var(--red);border-color:var(--red)}
+button.btn:disabled{opacity:.5;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+.scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-weight:600;font-size:12px;color:var(--muted);background:#F7F8FA;white-space:nowrap}
+td.n,th.n{text-align:right}
+td input[type=number]{width:110px;text-align:right}
+td input[type=text]{width:100%;min-width:180px}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;background:var(--na-bg);color:var(--muted);white-space:nowrap}
+.pill.approved,.pill.completed,.pill.published,.pill.GREEN,.pill.open,.pill.INFO{background:var(--green-bg);color:var(--green)}
+.pill.submitted,.pill.pending_review,.pill.running,.pill.queued,.pill.AMBER,.pill.generating,.pill.WARN{background:var(--amber-bg);color:var(--amber)}
+.pill.rejected,.pill.failed,.pill.RED,.pill.ERROR{background:var(--red-bg);color:var(--red)}
+/* RAG matrix: the one bold element */
+.matrix td.cell{min-width:130px;border-left:3px solid #fff}
+.matrix td.GREEN{background:var(--green-bg)} .matrix td.AMBER{background:var(--amber-bg)}
+.matrix td.RED{background:var(--red-bg)} .matrix td.NA{background:#F4F6F8}
+.matrix .act{font-size:15px;font-weight:600}
+.matrix .sub{font-size:12px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:14px 16px}
+.warn{background:var(--amber-bg);color:var(--amber);padding:8px 12px;border-radius:4px;margin:8px 0}
+.err{background:var(--red-bg);color:var(--red);padding:8px 12px;border-radius:4px;margin:8px 0}
+.ok{background:var(--green-bg);color:var(--green);padding:8px 12px;border-radius:4px;margin:8px 0}
+pre.answer{white-space:pre-wrap;font-family:inherit;background:var(--surface);border:1px solid var(--line);padding:14px;border-radius:4px;max-width:90ch}
+.muted{color:var(--muted)}
+.hidden{display:none}
+form.inline{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+form.inline label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px}
+#toast{position:fixed;right:20px;bottom:20px;max-width:420px;z-index:9}
+@media (max-width:800px){.layout{grid-template-columns:1fr}nav{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:0}nav button{white-space:nowrap;border-left:0;border-bottom:3px solid transparent}nav button.active{border-bottom-color:var(--primary)}.grid2{grid-template-columns:1fr}main{padding:16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>KPI & MIS Reporting Hub</h1>
+  <span id="aimode"></span>
+  <label>User <input id="user" size="12"></label>
+  <label>Role <select id="role"><option>submitter</option><option>approver</option><option>admin</option></select></label>
+</header>
+<div class="layout">
+<nav id="nav">
+  <button data-view="dashboard" class="active">Dashboard</button>
+  <button data-view="entry">Enter KPIs</button>
+  <button data-view="upload">Upload files</button>
+  <button data-view="approvals">Approvals</button>
+  <button data-view="commentary">Commentary</button>
+  <button data-view="ask">Ask the data</button>
+  <button data-view="documents">Documents</button>
+  <button data-view="setup">Setup</button>
+</nav>
+<main>
+
+<section id="v-dashboard">
+  <h2>Dashboard</h2>
+  <p class="lead">Consolidate a period to recalculate formulas, variances and RAG status, then download the MIS pack.</p>
+  <div class="bar">
+    <label>Period <select id="d-period" class="period-select"></select></label>
+    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="d-incl"> Include submitted (provisional)</label>
+    <button class="btn" id="d-run">Run consolidation</button>
+    <button class="btn ghost" id="d-xlsx" disabled>Download Excel</button>
+    <button class="btn ghost" id="d-pptx" disabled>Download PowerPoint</button>
+  </div>
+  <div id="d-jobinfo" class="muted"></div>
+  <h3>Performance by unit</h3>
+  <div class="scroll"><table class="matrix" id="d-matrix"></table></div>
+  <div class="grid2" style="margin-top:20px">
+    <div>
+      <h3 style="margin-top:0">Submission progress</h3>
+      <div class="scroll"><table id="d-status"></table></div>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Trend</h3>
+      <div class="bar"><label>KPI <select id="t-kpi"></select></label><label>Unit <select id="t-bu"></select></label></div>
+      <div class="panel"><canvas id="t-chart" height="220"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section id="v-entry" class="hidden">
+  <h2>Enter KPIs</h2>
+  <p class="lead">Save a draft any time. Submitting sends values to an approver and locks them.</p>
+  <div class="bar">
+    <label>Period <select id="e-period" class="period-select"></select></label>
+    <label>Business unit <select id="e-bu" class="bu-select"></select></label>
+    <button class="btn ghost" id="e-load">Load</button>
+  </div>
+  <div id="e-msg"></div>
+  <div class="scroll"><table id="e-grid"></table></div>
+  <div class="bar" style="margin-top:12px">
+    <button class="btn ghost" id="e-draft">Save draft</button>
+    <button class="btn" id="e-submit">Submit for approval</button>
+  </div>
+</section>
+
+<section id="v-upload" class="hidden">
+  <h2>Upload files</h2>
+  <p class="lead">Upload Excel or CSV submissions in the standard template. Valid rows are imported as submitted; invalid rows go to the rejected-record report.</p>
+  <div class="bar">
+    <button class="btn ghost" id="u-template">Download template</button>
+    <input type="file" id="u-file" accept=".xlsx,.xlsm,.csv">
+    <button class="btn" id="u-go">Upload and validate</button>
+  </div>
+  <div id="u-msg"></div>
+  <h3>Processing log</h3>
+  <div class="scroll"><table id="u-jobs"></table></div>
+  <div id="u-detail"></div>
+</section>
+
+<section id="v-approvals" class="hidden">
+  <h2>Approvals</h2>
+  <p class="lead">Review submitted values. You can't approve your own submissions.</p>
+  <div class="bar">
+    <button class="btn" id="a-approve">Approve selected</button>
+    <input id="a-note" placeholder="Note (required to reject)" size="36">
+    <button class="btn danger" id="a-reject">Reject selected</button>
+  </div>
+  <div id="a-msg"></div>
+  <div class="scroll"><table id="a-table"></table></div>
+  <h3>Formulas waiting for approval</h3>
+  <div class="scroll"><table id="a-formulas"></table></div>
+</section>
+
+<section id="v-commentary" class="hidden">
+  <h2>Commentary</h2>
+  <p class="lead">Drafts explain the latest consolidated results. Figures come only from validated data, and nothing is published until a reviewer approves it.</p>
+  <div class="bar">
+    <label>Period <select id="c-period" class="period-select"></select></label>
+    <label>Scope <select id="c-scope"></select></label>
+    <button class="btn" id="c-gen">Generate draft</button>
+  </div>
+  <div id="c-msg"></div>
+  <div class="grid2">
+    <div><div class="scroll"><table id="c-list"></table></div></div>
+    <div id="c-editor" class="panel hidden">
+      <div id="c-meta" class="muted"></div>
+      <div id="c-warn"></div>
+      <textarea id="c-text"></textarea>
+      <input id="c-notes" placeholder="Review notes" style="width:100%;margin:8px 0">
+      <div class="bar" id="c-actions"></div>
+    </div>
+  </div>
+</section>
+
+<section id="v-ask" class="hidden">
+  <h2>Ask the data</h2>
+  <p class="lead">Ask about KPI results and uploaded documents, for example "Why is cost-to-income red for CORP?"</p>
+  <div class="bar">
+    <label>Period <select id="q-period" class="period-select"></select></label>
+    <input id="q-text" size="60" placeholder="Your question">
+    <button class="btn" id="q-go">Ask</button>
+  </div>
+  <pre class="answer hidden" id="q-answer"></pre>
+  <div id="q-sources"></div>
+</section>
+
+<section id="v-documents" class="hidden">
+  <h2>Documents</h2>
+  <p class="lead">Policies, KPI definitions and supporting packs. Uploaded documents become searchable in Ask the data.</p>
+  <div class="bar">
+    <label>Period (optional) <select id="doc-period" class="period-select" data-optional="1"></select></label>
+    <input type="file" id="doc-file" accept=".pdf,.docx,.xlsx,.csv,.txt,.md">
+    <button class="btn" id="doc-go">Upload document</button>
+  </div>
+  <div id="doc-msg"></div>
+  <div class="scroll"><table id="doc-list"></table></div>
+</section>
+
+<section id="v-setup" class="hidden">
+  <h2>Setup</h2>
+  <p class="lead">Admins configure business units, KPIs and reporting periods. New or changed formulas need approver sign-off before they're calculated.</p>
+  <div id="s-msg"></div>
+  <h3>Business units</h3>
+  <form class="inline" id="s-bu-form">
+    <label>Code <input name="code" required size="8"></label>
+    <label>Name <input name="name" required size="24"></label>
+    <button class="btn">Add unit</button>
+  </form>
+  <div class="scroll" style="margin-top:8px"><table id="s-bus"></table></div>
+  <h3>KPIs</h3>
+  <form class="inline" id="s-kpi-form">
+    <label>Code <input name="code" required size="12" pattern="[A-Za-z][A-Za-z0-9_]*"></label>
+    <label>Name <input name="name" required size="20"></label>
+    <label>Unit <input name="unit" size="6"></label>
+    <label>Frequency <select name="frequency"><option>monthly</option><option>quarterly</option></select></label>
+    <label>Direction <select name="direction"><option value="higher_better">Higher is better</option><option value="lower_better">Lower is better</option></select></label>
+    <label>Type <select name="kpi_type"><option>input</option><option>formula</option></select></label>
+    <label>Formula <input name="formula" size="22" placeholder="OPEX / REVENUE * 100"></label>
+    <label>Group roll-up <select name="aggregation"><option>sum</option><option>avg</option></select></label>
+    <label>Tolerance % <input name="tolerance_pct" type="number" value="5" step="0.5" style="width:70px"></label>
+    <label>Owner <input name="owner_name" size="14"></label>
+    <label>Description <input name="description" size="24"></label>
+    <button class="btn">Add KPI</button>
+  </form>
+  <div class="scroll" style="margin-top:8px"><table id="s-kpis"></table></div>
+  <h3>Reporting periods</h3>
+  <form class="inline" id="s-period-form">
+    <label>Code <input name="code" required size="9" placeholder="2026-10"></label>
+    <label>Label <input name="label" required size="14" placeholder="October 2026"></label>
+    <label>Frequency <select name="frequency"><option>monthly</option><option>quarterly</option></select></label>
+    <label>Start <input name="start_date" type="date" required></label>
+    <label>End <input name="end_date" type="date" required></label>
+    <button class="btn">Add period</button>
+  </form>
+  <div class="scroll" style="margin-top:8px"><table id="s-periods"></table></div>
+</section>
+
+</main>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (v, pct) => v === null || v === undefined ? '–' : (pct ? v.toFixed(2) + '%' : Number(v).toLocaleString(undefined, {maximumFractionDigits: 2}));
+const state = {periods: [], bus: [], kpis: [], consolidation: null, chart: null, commentaryId: null};
+
+// ---------- identity (kept per browser) ----------
+const userEl = $('#user'), roleEl = $('#role');
+try { userEl.value = localStorage.getItem('kpi_user') || 'analyst1'; roleEl.value = localStorage.getItem('kpi_role') || 'admin'; }
+catch { userEl.value = 'analyst1'; roleEl.value = 'admin'; }
+const remember = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+userEl.onchange = () => { remember('kpi_user', userEl.value); refreshAll(); };
+roleEl.onchange = () => { remember('kpi_role', roleEl.value); refreshAll(); };
+
+function errorText(detail) {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) return detail.map(e => e.msg || JSON.stringify(e)).join('; ');
+  if (detail?.errors) return detail.errors.join('; ');
+  return JSON.stringify(detail);
+}
+async function api(path, opts = {}) {
+  const headers = {'X-User': userEl.value, 'X-Role': roleEl.value, ...(opts.headers || {})};
+  if (opts.json !== undefined) { headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(opts.json); }
+  const res = await fetch(path, {...opts, headers});
+  if (!res.ok) {
+    let m = res.statusText;
+    try { m = errorText((await res.json()).detail); } catch {}
+    throw new Error(m);
+  }
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('json') ? res.json() : res.blob();
+}
+async function download(path, filename) {
+  try {
+    const blob = await api(path);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch (e) { toast(e.message, 'err'); }
+}
+function toast(m, kind = 'ok') {
+  const t = $('#toast'); t.innerHTML = `<div class="${kind}">${esc(m)}</div>`;
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.innerHTML = '', 4000);
+}
+const msg = (el, text, kind = 'ok') => $(el).innerHTML = text ? `<div class="${kind}">${esc(text)}</div>` : '';
+const pill = (cls, label) => `<span class="pill ${esc(cls)}">${esc(label ?? String(cls).replace('_', ' '))}</span>`;
+async function poll(path, tries = 40) {
+  for (let i = 0; i < tries; i++) {
+    const j = await api(path);
+    if (!['queued', 'running', 'generating'].includes(j.status)) return j;
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  return api(path);
+}
+
+// ---------- navigation ----------
+$('#nav').onclick = e => {
+  const v = e.target.dataset.view; if (!v) return;
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b === e.target));
+  document.querySelectorAll('main > section').forEach(s => s.classList.toggle('hidden', s.id !== 'v-' + v));
+  loaders[v]?.();
+};
+
+// ---------- reference data ----------
+async function loadRefs() {
+  [state.periods, state.bus, state.kpis] = await Promise.all([api('/api/periods'), api('/api/business-units'), api('/api/kpis')]);
+  document.querySelectorAll('.period-select').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = (sel.dataset.optional ? '<option value="">None</option>' : '') +
+      state.periods.map(p => `<option value="${p.id}">${esc(p.label)} (${esc(p.code)})${p.status === 'closed' ? ', closed' : ''}</option>`).join('');
+    if (cur) sel.value = cur;
+  });
+  document.querySelectorAll('.bu-select').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = state.bus.filter(b => b.is_active).map(b => `<option value="${b.id}">${esc(b.name)} (${esc(b.code)})</option>`).join('');
+    if (cur) sel.value = cur;
+  });
+  const units = ['GROUP', ...state.bus.map(b => b.code)];
+  for (const id of ['#t-bu', '#c-scope']) { const s = $(id), c = s.value; s.innerHTML = units.map(u => `<option>${esc(u)}</option>`).join(''); if (c) s.value = c; }
+  const tk = $('#t-kpi'), c = tk.value;
+  tk.innerHTML = state.kpis.filter(k => k.is_active).map(k => `<option value="${esc(k.code)}">${esc(k.name)}</option>`).join('');
+  if (c) tk.value = c;
+}
+
+// ---------- dashboard ----------
+async function loadDashboard() {
+  const pid = $('#d-period').value; if (!pid) return;
+  const [cons, status] = await Promise.all([api(`/api/consolidations/latest?period_id=${pid}`), api(`/api/dashboard/status?period_id=${pid}`)]);
+  state.consolidation = cons.job;
+  $('#d-xlsx').disabled = $('#d-pptx').disabled = !cons.job;
+  $('#d-jobinfo').textContent = cons.job
+    ? `Last consolidated ${new Date(cons.job.finished_at).toLocaleString()} by ${cons.job.requested_by} using ${cons.job.result.statuses.join(' and ')} values. ${cons.job.result.red} red, ${cons.job.result.amber} amber.`
+    : 'This period has not been consolidated yet. Run consolidation to see results.';
+  renderMatrix(cons.rows);
+  $('#d-status').innerHTML = '<tr><th>Unit</th><th class="n">Expected</th><th class="n">Not started</th><th class="n">Draft</th><th class="n">Submitted</th><th class="n">Approved</th><th class="n">Rejected</th></tr>' +
+    status.map(s => `<tr><td>${esc(s.business_unit)}</td><td class="n">${s.expected}</td><td class="n">${s.not_started}</td><td class="n">${s.draft}</td><td class="n">${s.submitted}</td><td class="n">${s.approved}</td><td class="n">${s.rejected}</td></tr>`).join('');
+  loadTrend();
+}
+function renderMatrix(rows) {
+  if (!rows.length) { $('#d-matrix').innerHTML = '<tr><td class="muted">No consolidated results for this period.</td></tr>'; return; }
+  const units = ['GROUP', ...[...new Set(rows.map(r => r.business_unit))].filter(u => u !== 'GROUP').sort()];
+  const kpis = [...new Map(rows.map(r => [r.kpi_code, r])).values()];
+  const idx = Object.fromEntries(rows.map(r => [r.business_unit + '|' + r.kpi_code, r]));
+  $('#d-matrix').innerHTML = `<tr><th>KPI</th>${units.map(u => `<th>${esc(u)}</th>`).join('')}</tr>` + kpis.map(k =>
+    `<tr><td><strong>${esc(k.kpi_name)}</strong><div class="sub muted">${esc(k.unit)}${k.note?.startsWith('=') ? ' ' + esc(k.note) : ''}</div></td>` +
+    units.map(u => { const r = idx[u + '|' + k.kpi_code]; if (!r) return '<td class="cell NA muted">–</td>';
+      return `<td class="cell ${esc(r.rag)}" title="${esc(r.rag)}${r.note ? ': ' + esc(r.note) : ''}"><div class="act num">${fmt(r.actual)}</div>
+        <div class="sub num">Target ${fmt(r.target)}, ${fmt(r.variance_pct, true)}</div>
+        <div class="sub num">vs prior ${fmt(r.change_vs_prior_pct, true)}</div></td>`; }).join('') + '</tr>').join('');
+}
+async function loadTrend() {
+  const code = $('#t-kpi').value, bu = $('#t-bu').value; if (!code || typeof Chart === 'undefined') return;
+  const t = await api(`/api/dashboard/trend?kpi_code=${encodeURIComponent(code)}&business_unit=${encodeURIComponent(bu)}`);
+  state.chart?.destroy();
+  state.chart = new Chart($('#t-chart'), {type: 'line', data: {labels: t.points.map(p => p.period), datasets: [
+    {label: 'Actual', data: t.points.map(p => p.actual), borderColor: '#2B4C7E', backgroundColor: '#2B4C7E', tension: .2},
+    {label: 'Target', data: t.points.map(p => p.target), borderColor: '#8A94A3', borderDash: [5, 4], pointRadius: 0}]},
+    options: {plugins: {title: {display: true, text: `${t.name}, ${t.business_unit}${t.unit ? ' (' + t.unit + ')' : ''}`}}, scales: {y: {beginAtZero: false}}}});
+}
+$('#d-period').onchange = loadDashboard; $('#t-kpi').onchange = loadTrend; $('#t-bu').onchange = loadTrend;
+$('#d-run').onclick = async () => {
+  try {
+    let j = await api('/api/consolidations', {method: 'POST', json: {period_id: +$('#d-period').value, include_submitted: $('#d-incl').checked}});
+    if (!['completed', 'failed'].includes(j.status)) j = await poll(`/api/jobs/${j.id}`);
+    toast(j.status === 'completed' ? 'Consolidation complete' : `Consolidation failed: ${j.error}`, j.status === 'completed' ? 'ok' : 'err');
+    loadDashboard();
+  } catch (e) { toast(e.message, 'err'); }
+};
+$('#d-xlsx').onclick = () => download(`/api/documents/${state.consolidation.result.excel_document_id}/download`, 'MIS_pack.xlsx');
+$('#d-pptx').onclick = () => download(`/api/documents/${state.consolidation.result.pptx_document_id}/download`, 'MIS_pack.pptx');
+
+// ---------- data entry ----------
+async function loadEntry() {
+  const pid = $('#e-period').value, bid = $('#e-bu').value; if (!pid || !bid) return;
+  msg('#e-msg', '');
+  const g = await api(`/api/values/grid?period_id=${pid}&business_unit_id=${bid}`);
+  const closed = g.period_status !== 'open';
+  if (closed) msg('#e-msg', `Period ${g.period} is closed. Values are read-only.`, 'warn');
+  $('#e-grid').innerHTML = '<tr><th>KPI</th><th>Owner</th><th class="n">Actual</th><th class="n">Target</th><th>Commentary</th><th>Status</th><th>Evidence</th></tr>' +
+    (g.rows.length ? g.rows.map(r => { const lock = closed || ['submitted', 'approved'].includes(r.status);
+      return `<tr data-kpi="${r.kpi_id}">
+      <td><strong>${esc(r.kpi_name)}</strong><div class="muted">${esc(r.kpi_code)} ${esc(r.unit)}</div></td>
+      <td>${esc(r.owner || '')}</td>
+      <td class="n"><input type="number" step="any" class="act" aria-label="Actual" value="${r.actual ?? ''}" ${lock ? 'disabled' : ''}></td>
+      <td class="n"><input type="number" step="any" class="tgt" aria-label="Target" value="${r.target ?? ''}" ${lock ? 'disabled' : ''}></td>
+      <td><input type="text" class="com" aria-label="Commentary" value="${esc(r.commentary || '')}" ${lock ? 'disabled' : ''}></td>
+      <td>${pill(r.status)}${r.review_note ? `<div class="muted">${esc(r.review_note)}</div>` : ''}</td>
+      <td>${r.value_id ? `<label class="muted">${r.evidence_count} file(s)<input type="file" data-vid="${r.value_id}" class="ev" style="width:170px"></label>` : '<span class="muted">Save first</span>'}</td></tr>`; }).join('')
+      : '<tr><td colspan="7" class="muted">No input KPIs match this period\'s frequency. Add KPIs in Setup.</td></tr>');
+  document.querySelectorAll('#e-grid .ev').forEach(inp => inp.onchange = async () => {
+    const fd = new FormData(); fd.append('file', inp.files[0]);
+    try { await api(`/api/values/${inp.dataset.vid}/evidence`, {method: 'POST', body: fd}); toast('Evidence uploaded'); loadEntry(); }
+    catch (e) { toast(e.message, 'err'); }
+  });
+}
+async function saveEntry(action) {
+  const num = v => v === '' ? null : Number(v);
+  const entries = [...document.querySelectorAll('#e-grid tr[data-kpi]')].filter(tr => !tr.querySelector('.act').disabled).map(tr => ({
+    kpi_id: +tr.dataset.kpi, actual: num(tr.querySelector('.act').value), target: num(tr.querySelector('.tgt').value),
+    commentary: tr.querySelector('.com').value || null}));
+  const toSend = action === 'submit' ? entries.filter(e => e.actual !== null) : entries;
+  if (!toSend.length) return msg('#e-msg', 'Enter at least one actual value.', 'warn');
+  try {
+    await api('/api/values', {method: 'PUT', json: {period_id: +$('#e-period').value, business_unit_id: +$('#e-bu').value, action, entries: toSend}});
+    await loadEntry(); msg('#e-msg', action === 'submit' ? `Submitted ${toSend.length} value(s) for approval.` : 'Draft saved.');
+  } catch (e) { msg('#e-msg', e.message, 'err'); }
+}
+$('#e-load').onclick = loadEntry; $('#e-period').onchange = loadEntry; $('#e-bu').onchange = loadEntry;
+$('#e-draft').onclick = () => saveEntry('draft'); $('#e-submit').onclick = () => saveEntry('submit');
+
+// ---------- file upload ----------
+$('#u-template').onclick = () => download('/api/files/template', 'kpi_submission_template.xlsx');
+$('#u-go').onclick = async () => {
+  const f = $('#u-file').files[0]; if (!f) return msg('#u-msg', 'Choose a file first.', 'warn');
+  const fd = new FormData(); fd.append('file', f);
+  try {
+    let j = await api('/api/files/submissions', {method: 'POST', body: fd});
+    if (!['completed', 'failed'].includes(j.status)) j = await poll(`/api/jobs/${j.id}`);
+    if (j.status === 'failed') msg('#u-msg', `File rejected: ${j.error}`, 'err');
+    else msg('#u-msg', `${j.rows_accepted} of ${j.rows_total} rows imported, ${j.rows_rejected} rejected.`, j.rows_rejected ? 'warn' : 'ok');
+    loadJobs(); showJob(j.id);
+  } catch (e) { msg('#u-msg', e.message, 'err'); }
+};
+async function loadJobs() {
+  const jobs = await api('/api/jobs');
+  $('#u-jobs').innerHTML = '<tr><th>Job</th><th>Type</th><th>Status</th><th class="n">Rows</th><th class="n">Accepted</th><th class="n">Rejected</th><th>By</th><th>When</th><th></th></tr>' +
+    (jobs.length ? jobs.map(j => `<tr><td>#${j.id}</td><td>${esc(j.job_type.replace('_', ' '))}</td><td>${pill(j.status)}</td><td class="n">${j.rows_total}</td><td class="n">${j.rows_accepted}</td><td class="n">${j.rows_rejected}</td><td>${esc(j.requested_by)}</td><td>${new Date(j.created_at).toLocaleString()}</td><td><button class="btn ghost" data-job="${j.id}">Details</button></td></tr>`).join('')
+      : '<tr><td colspan="9" class="muted">No jobs yet. Upload a submission file to start.</td></tr>');
+  document.querySelectorAll('#u-jobs [data-job]').forEach(b => b.onclick = () => showJob(+b.dataset.job));
+}
+async function showJob(id) {
+  const [logs, rej] = await Promise.all([api(`/api/jobs/${id}/logs`), api(`/api/jobs/${id}/rejected`)]);
+  $('#u-detail').innerHTML = `<h3>Job #${id}</h3><div class="scroll"><table><tr><th>Level</th><th>Message</th><th>At</th></tr>${logs.map(l => `<tr><td>${pill(l.level, l.level)}</td><td>${esc(l.message)}</td><td>${new Date(l.at).toLocaleTimeString()}</td></tr>`).join('')}</table></div>` +
+    (rej.length ? `<h3>Rejected records <button class="btn ghost" id="u-rejdl">Download report</button></h3><div class="scroll"><table><tr><th class="n">Row</th><th>KPI</th><th>Unit</th><th>Period</th><th class="n">Actual</th><th>Reasons</th></tr>${rej.map(r => `<tr><td class="n">${r.row}</td><td>${esc(r.data.kpi_code)}</td><td>${esc(r.data.business_unit)}</td><td>${esc(r.data.period)}</td><td class="n">${esc(r.data.actual)}</td><td>${r.reasons.map(esc).join('<br>')}</td></tr>`).join('')}</table></div>` : '');
+  const dl = $('#u-rejdl'); if (dl) dl.onclick = () => download(`/api/jobs/${id}/rejected.xlsx`, `rejected_job${id}.xlsx`);
+}
+
+// ---------- approvals ----------
+async function loadApprovals() {
+  msg('#a-msg', '');
+  if (roleEl.value === 'submitter') { $('#a-table').innerHTML = '<tr><td class="muted">Switch to the approver role to review submissions.</td></tr>'; $('#a-formulas').innerHTML = ''; return; }
+  const rows = await api('/api/values/pending');
+  $('#a-table').innerHTML = '<tr><th><input type="checkbox" id="a-all" aria-label="Select all"></th><th>Period</th><th>Unit</th><th>KPI</th><th class="n">Actual</th><th class="n">Target</th><th>Commentary</th><th>Source</th><th>Submitted by</th></tr>' +
+    (rows.length ? rows.map(r => `<tr><td><input type="checkbox" class="a-sel" value="${r.value_id}" ${r.submitted_by === userEl.value && roleEl.value !== 'admin' ? 'disabled title="Your own submission"' : ''}></td><td>${esc(r.period)}</td><td>${esc(r.business_unit)}</td><td>${esc(r.kpi_name)}</td><td class="n">${fmt(r.actual)}</td><td class="n">${fmt(r.target)}</td><td>${esc(r.commentary || '')}</td><td>${esc(r.source)}</td><td>${esc(r.submitted_by)}</td></tr>`).join('')
+      : '<tr><td colspan="9" class="muted">Nothing waiting for review.</td></tr>');
+  const all = $('#a-all'); if (all) all.onchange = () => document.querySelectorAll('.a-sel:not(:disabled)').forEach(c => c.checked = all.checked);
+  const pendingF = state.kpis.filter(k => k.kpi_type === 'formula' && !k.formula_approved);
+  $('#a-formulas').innerHTML = '<tr><th>KPI</th><th>Formula</th><th></th></tr>' + (pendingF.length ? pendingF.map(k =>
+    `<tr><td>${esc(k.name)} (${esc(k.code)})</td><td><code>${esc(k.formula)}</code></td><td><button class="btn ghost" data-fid="${k.id}">Approve formula</button></td></tr>`).join('')
+    : '<tr><td colspan="3" class="muted">All formulas are approved.</td></tr>');
+  document.querySelectorAll('[data-fid]').forEach(b => b.onclick = async () => {
+    try { await api(`/api/kpis/${b.dataset.fid}/approve-formula`, {method: 'POST'}); await loadRefs(); loadApprovals(); toast('Formula approved'); }
+    catch (e) { toast(e.message, 'err'); }
+  });
+}
+async function bulkReview(approve) {
+  const ids = [...document.querySelectorAll('.a-sel:checked')].map(c => +c.value);
+  if (!ids.length) return msg('#a-msg', 'Select at least one value.', 'warn');
+  try { await api('/api/values/review-bulk', {method: 'POST', json: {value_ids: ids, approve, note: $('#a-note').value || null}});
+    await loadApprovals(); msg('#a-msg', `${approve ? 'Approved' : 'Rejected'} ${ids.length} value(s).`); }
+  catch (e) { msg('#a-msg', e.message, 'err'); }
+}
+$('#a-approve').onclick = () => bulkReview(true); $('#a-reject').onclick = () => bulkReview(false);
+
+// ---------- commentary ----------
+async function loadCommentary() {
+  const list = await api(`/api/commentary?period_id=${$('#c-period').value}`);
+  $('#c-list').innerHTML = '<tr><th>#</th><th>Scope</th><th>Status</th><th>Source</th><th>Requested by</th><th></th></tr>' +
+    (list.length ? list.map(c => `<tr><td>${c.id}</td><td>${esc(c.business_unit)}</td><td>${pill(c.status)}</td><td>${esc(c.generated_by || '')}</td><td>${esc(c.requested_by)}</td><td><button class="btn ghost" data-cid="${c.id}">Open</button></td></tr>`).join('')
+      : '<tr><td colspan="6" class="muted">No commentary for this period yet. Generate a draft to start.</td></tr>');
+  document.querySelectorAll('[data-cid]').forEach(b => b.onclick = () => openCommentary(+b.dataset.cid));
+  if (state.commentaryId && list.some(c => c.id === state.commentaryId)) openCommentary(state.commentaryId); else $('#c-editor').classList.add('hidden');
+}
+async function openCommentary(id) {
+  state.commentaryId = id;
+  const c = await api(`/api/commentary/${id}`);
+  $('#c-editor').classList.remove('hidden');
+  $('#c-meta').innerHTML = `#${c.id}, ${esc(c.business_unit)} ${pill(c.status)} <span>${esc(c.generated_by || '')}</span>${c.reviewer ? `, reviewed by ${esc(c.reviewer)}` : ''}${c.review_notes ? `<div>Notes: ${esc(c.review_notes)}</div>` : ''}`;
+  $('#c-warn').innerHTML = (c.validation_warnings || []).map(w => `<div class="warn">${esc(w)}</div>`).join('');
+  const editable = ['draft', 'rejected'].includes(c.status), reviewing = c.status === 'pending_review';
+  $('#c-text').value = c.final_text || c.draft_text || '';
+  $('#c-text').disabled = !(editable || reviewing);
+  const isApprover = roleEl.value !== 'submitter', btn = (bid, label, cls = '') => `<button class="btn ${cls}" id="${bid}">${label}</button>`;
+  $('#c-actions').innerHTML = (editable ? btn('c-save', 'Save edits', 'ghost') + (c.status === 'draft' ? btn('c-submit', 'Send for review') : '') : '') +
+    (reviewing && isApprover ? btn('c-approve', 'Approve') + btn('c-reject', 'Reject', 'danger') : '') +
+    (c.status === 'approved' && isApprover ? btn('c-publish', 'Publish') : '') +
+    (reviewing && !isApprover ? '<span class="muted">Waiting for an approver.</span>' : '');
+  const act = async (fn, done) => { try { await fn(); toast(done); await loadCommentary(); } catch (e) { toast(e.message, 'err'); } };
+  const on = (sel, fn) => { const b = $(sel); if (b) b.onclick = fn; };
+  on('#c-save', () => act(() => api(`/api/commentary/${id}`, {method: 'PUT', json: {draft_text: $('#c-text').value}}), 'Edits saved'));
+  on('#c-submit', () => act(() => api(`/api/commentary/${id}/submit`, {method: 'POST'}), 'Sent for review'));
+  on('#c-approve', () => act(() => api(`/api/commentary/${id}/review`, {method: 'POST', json: {approve: true, notes: $('#c-notes').value || null, final_text: $('#c-text').value}}), 'Approved'));
+  on('#c-reject', () => act(() => api(`/api/commentary/${id}/review`, {method: 'POST', json: {approve: false, notes: $('#c-notes').value || null}}), 'Rejected'));
+  on('#c-publish', () => act(() => api(`/api/commentary/${id}/publish`, {method: 'POST'}), 'Published'));
+}
+$('#c-period').onchange = loadCommentary;
+$('#c-gen').onclick = async () => {
+  try {
+    msg('#c-msg', 'Generating draft…', 'warn');
+    let c = await api('/api/commentary', {method: 'POST', json: {period_id: +$('#c-period').value, business_unit: $('#c-scope').value}});
+    if (c.status === 'generating') c = await poll(`/api/commentary/${c.id}`, 60);
+    msg('#c-msg', c.status === 'failed' ? c.draft_text : 'Draft ready for editing.', c.status === 'failed' ? 'err' : 'ok');
+    state.commentaryId = c.id; loadCommentary();
+  } catch (e) { msg('#c-msg', e.message, 'err'); }
+};
+
+// ---------- ask ----------
+$('#q-go').onclick = async () => {
+  const q = $('#q-text').value.trim(); if (q.length < 3) return;
+  $('#q-answer').classList.remove('hidden'); $('#q-answer').textContent = 'Looking that up…'; $('#q-sources').innerHTML = '';
+  try {
+    const r = await api('/api/ask', {method: 'POST', json: {question: q, period_id: +$('#q-period').value || null}});
+    $('#q-answer').textContent = r.answer;
+    $('#q-sources').innerHTML = r.sources.length ? '<h3>Sources</h3>' + r.sources.map(s => `<div class="panel" style="margin-bottom:8px"><strong>${esc(s.document)}</strong> <span class="muted">part ${s.chunk + 1}</span><div class="muted">${esc(s.excerpt)}…</div></div>`).join('') : '';
+  } catch (e) { $('#q-answer').textContent = e.message; }
+};
+$('#q-text').onkeydown = e => { if (e.key === 'Enter') $('#q-go').click(); };
+
+// ---------- documents ----------
+async function loadDocuments() {
+  const docs = await api('/api/documents');
+  $('#doc-list').innerHTML = '<tr><th>File</th><th>Type</th><th class="n">Size</th><th>Searchable</th><th>By</th><th>When</th><th></th></tr>' +
+    (docs.length ? docs.map(d => `<tr><td>${esc(d.filename)}</td><td>${esc(d.doc_type)}</td><td class="n">${(d.size_bytes / 1024).toFixed(1)} KB</td><td>${d.doc_type === 'reference' ? (d.ingested ? 'Yes' : 'Processing') : '–'}</td><td>${esc(d.uploaded_by)}</td><td>${new Date(d.created_at).toLocaleString()}</td><td><button class="btn ghost" data-doc="${d.id}" data-name="${esc(d.filename)}">Download</button></td></tr>`).join('')
+      : '<tr><td colspan="7" class="muted">No documents yet.</td></tr>');
+  document.querySelectorAll('[data-doc]').forEach(b => b.onclick = () => download(`/api/documents/${b.dataset.doc}/download`, b.dataset.name));
+}
+$('#doc-go').onclick = async () => {
+  const f = $('#doc-file').files[0]; if (!f) return msg('#doc-msg', 'Choose a file first.', 'warn');
+  const fd = new FormData(); fd.append('file', f); if ($('#doc-period').value) fd.append('period_id', $('#doc-period').value);
+  try { await api('/api/documents', {method: 'POST', body: fd}); msg('#doc-msg', 'Document uploaded. It becomes searchable once processed.'); loadDocuments(); }
+  catch (e) { msg('#doc-msg', e.message, 'err'); }
+};
+
+// ---------- setup ----------
+async function loadSetup() {
+  await loadRefs();
+  $('#s-bus').innerHTML = '<tr><th>Code</th><th>Name</th><th>Active</th></tr>' + state.bus.map(b => `<tr><td>${esc(b.code)}</td><td>${esc(b.name)}</td><td>${b.is_active ? 'Yes' : 'No'}</td></tr>`).join('');
+  $('#s-kpis').innerHTML = '<tr><th>Code</th><th>Name</th><th>Unit</th><th>Frequency</th><th>Direction</th><th>Type</th><th>Formula</th><th>Roll-up</th><th class="n">Tolerance</th><th>Owner</th></tr>' +
+    state.kpis.map(k => `<tr><td>${esc(k.code)}</td><td>${esc(k.name)}</td><td>${esc(k.unit)}</td><td>${esc(k.frequency)}</td><td>${k.direction === 'higher_better' ? 'Higher is better' : 'Lower is better'}</td><td>${esc(k.kpi_type)}</td><td>${k.formula ? `<code>${esc(k.formula)}</code> ${k.formula_approved ? pill('approved') : pill('pending_review', 'needs approval')}` : ''}</td><td>${esc(k.aggregation)}</td><td class="n">${k.tolerance_pct}%</td><td>${esc(k.owner_name || '')}</td></tr>`).join('');
+  $('#s-periods').innerHTML = '<tr><th>Code</th><th>Label</th><th>Frequency</th><th>Dates</th><th>Status</th><th></th></tr>' +
+    state.periods.map(p => `<tr><td>${esc(p.code)}</td><td>${esc(p.label)}</td><td>${esc(p.frequency)}</td><td>${p.start_date} to ${p.end_date}</td><td>${pill(p.status)}</td><td><button class="btn ghost" data-pid="${p.id}" data-act="${p.status === 'open' ? 'close' : 'reopen'}">${p.status === 'open' ? 'Close period' : 'Reopen period'}</button></td></tr>`).join('');
+  document.querySelectorAll('[data-pid]').forEach(b => b.onclick = async () => {
+    try { await api(`/api/periods/${b.dataset.pid}/${b.dataset.act}`, {method: 'POST'}); loadSetup(); } catch (e) { msg('#s-msg', e.message, 'err'); }
+  });
+}
+function formJSON(form) {
+  const o = Object.fromEntries(new FormData(form));
+  for (const [k, v] of Object.entries(o)) if (v === '') o[k] = null;
+  if (o.tolerance_pct != null) o.tolerance_pct = Number(o.tolerance_pct);
+  if ('unit' in o && o.unit === null) o.unit = '';
+  return o;
+}
+for (const [id, path, label] of [['#s-bu-form', '/api/business-units', 'Business unit'], ['#s-kpi-form', '/api/kpis', 'KPI'], ['#s-period-form', '/api/periods', 'Period']]) {
+  $(id).onsubmit = async e => {
+    e.preventDefault();
+    try { await api(path, {method: 'POST', json: formJSON(e.target)}); e.target.reset(); msg('#s-msg', `${label} added.`); loadSetup(); }
+    catch (err) { msg('#s-msg', err.message, 'err'); }
+  };
+}
+
+// ---------- boot ----------
+const loaders = {dashboard: loadDashboard, entry: loadEntry, upload: loadJobs, approvals: loadApprovals,
+  commentary: loadCommentary, documents: loadDocuments, setup: loadSetup};
+async function refreshAll() {
+  try {
+    await loadRefs();
+    const active = document.querySelector('#nav button.active').dataset.view;
+    await loaders[active]?.();
+  } catch (e) { toast(e.message, 'err'); }
+}
+api('/api/health').then(h => $('#aimode').textContent = `AI: ${h.ai_mode}`).catch(() => {});
+refreshAll();
+</script>
+</body>
+</html>
