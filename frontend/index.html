@@ -13,6 +13,8 @@
   --primary:#2B4C7E; --primary-ink:#FFFFFF;
   --green:#2E7D4F; --green-bg:#DCEFE3; --amber:#9A6510; --amber-bg:#FBEBC8;
   --red:#A83232; --red-bg:#F6D9D9; --na-bg:#E6E9ED;
+  --peach:#F4B183; --peach-l:#FBE5D6; --sky:#9DD9F3; --sky-l:#DDF1FB; --purple:#6A2C91;
+  --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a; --series-4:#eda100; --series-5:#e87ba4; --series-6:#008300;
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
@@ -67,6 +69,17 @@ pre.answer{white-space:pre-wrap;font-family:inherit;background:var(--surface);bo
 .hidden{display:none}
 form.inline{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
 form.inline label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px}
+.mis th,.mis td{text-align:center;vertical-align:middle;border:1px solid var(--line)}
+.mis td.desc,.mis th.desc{text-align:left;min-width:180px}
+.mis .cur{background:var(--peach)} .mis .cur-sub{background:var(--peach-l)}
+.mis .cmp{background:var(--sky)} .mis .cmp-sub{background:var(--sky-l)}
+.mis th.cur,.mis th.cmp,.mis th.cur-sub,.mis th.cmp-sub{color:var(--ink)}
+.mis td.tot{font-weight:600}
+.mv-up{color:var(--green);font-weight:600} .mv-down{color:var(--red);font-weight:600} .mv-flat{color:var(--muted)}
+table.sum th{background:var(--purple);color:#fff}
+table.sum tr.total td{background:#E9EBEF;font-weight:600}
+details summary{cursor:pointer;font-weight:600}
+#m-result select{width:100%;max-width:420px}
 #toast{position:fixed;right:20px;bottom:20px;max-width:420px;z-index:9}
 @media (max-width:800px){.layout{grid-template-columns:1fr}nav{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:0}nav button{white-space:nowrap;border-left:0;border-bottom:3px solid transparent}nav button.active{border-bottom-color:var(--primary)}.grid2{grid-template-columns:1fr}main{padding:16px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -82,6 +95,7 @@ form.inline label{display:flex;flex-direction:column;font-size:12px;color:var(--
 <div class="layout">
 <nav id="nav">
   <button data-view="dashboard" class="active">Dashboard</button>
+  <button data-view="scorecard">KPI scorecard</button>
   <button data-view="entry">Enter KPIs</button>
   <button data-view="upload">Upload files</button>
   <button data-view="approvals">Approvals</button>
@@ -93,7 +107,50 @@ form.inline label{display:flex;flex-direction:column;font-size:12px;color:var(--
 <main>
 
 <section id="v-dashboard">
-  <h2>Dashboard</h2>
+  <h2>MIS summary</h2>
+  <p class="lead">Engagements delivered in the month and the KPIs executed on them, by project type, compared with the same month last year or the previous month. Figures come from your project tracker.</p>
+  <div class="bar">
+    <label>Month <select id="m-month"></select></label>
+    <label>Compare with <select id="m-compare"><option value="py">Same month last year</option><option value="pm">Previous month</option></select></label>
+    <button class="btn ghost" id="m-xlsx">Download summary (Excel)</button>
+    <button class="btn ghost" id="m-update" aria-expanded="false">Update tracker data</button>
+  </div>
+  <div id="m-upload" class="panel hidden">
+    <h3 style="margin-top:0">Update tracker data</h3>
+    <p class="muted" style="margin-top:0">Upload the tracker exactly as you keep it. Legend rows above the table, two-row headers and blank cells are fine. An engagement counts as delivered in the month of its actual delivery date.</p>
+    <div class="bar">
+      <input type="file" id="m-file" accept=".xlsx,.xlsm,.csv">
+      <label>Existing data <select id="m-mode"><option value="replace">Replace with this file</option><option value="append">Keep and add this file (for example last year's tracker)</option></select></label>
+      <button class="btn" id="m-import">Import tracker</button>
+      <button class="btn ghost" id="m-sample">Download sample tracker</button>
+    </div>
+    <div id="m-result"></div>
+  </div>
+  <div id="m-notice"></div>
+  <div id="m-body">
+    <div class="scroll"><table id="m-headline" class="mis"></table></div>
+    <div class="grid2" style="margin-top:20px">
+      <div>
+        <h3 style="margin-top:0">Resources</h3>
+        <div class="scroll"><table id="m-res"></table></div>
+      </div>
+      <div>
+        <h3 style="margin-top:0">Project type</h3>
+        <div class="scroll"><table id="m-types"></table></div>
+        <h3>Partners</h3>
+        <div class="scroll"><table id="m-partners"></table></div>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:20px">
+      <div class="panel"><h3 style="margin-top:0" id="m-pie-title">Engagement distribution by region</h3><div style="position:relative;height:280px"><canvas id="m-pie" aria-label="Engagements by region"></canvas></div></div>
+      <div class="panel"><div class="bar" style="justify-content:space-between;margin-bottom:6px"><h3 style="margin:0">Month by month</h3><label style="flex-direction:row;align-items:center;gap:6px">Show <select id="m-metric"><option value="engagements">Engagements delivered</option><option value="kpis">KPIs executed</option></select></label></div><div style="position:relative;height:280px"><canvas id="m-line" aria-label="Month by month trend"></canvas></div></div>
+    </div>
+    <details id="m-details" style="margin-top:20px"><summary id="m-details-title">Engagements delivered this month</summary><div class="scroll" style="margin-top:8px"><table id="m-list"></table></div></details>
+  </div>
+</section>
+
+<section id="v-scorecard" class="hidden">
+  <h2>KPI scorecard</h2>
   <p class="lead">Consolidate a period to recalculate formulas, variances and RAG status, then download the MIS pack.</p>
   <div class="bar">
     <label>Period <select id="d-period" class="period-select"></select></label>
@@ -380,6 +437,138 @@ $('#d-run').onclick = async () => {
 $('#d-xlsx').onclick = () => download(`/api/documents/${state.consolidation.result.excel_document_id}/download`, 'MIS_pack.xlsx');
 $('#d-pptx').onclick = () => download(`/api/documents/${state.consolidation.result.pptx_document_id}/download`, 'MIS_pack.pptx');
 
+// ---------- MIS summary (tracker) ----------
+const mis = {data: null, pie: null, line: null, lastImport: null};
+const REGION_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)', 'var(--series-6)', '#8A94A3', '#B5BCC6'];
+const cssVar = v => v.startsWith('var(') ? getComputedStyle(document.documentElement).getPropertyValue(v.slice(4, -1)).trim() : v;
+const n0 = v => Number(v || 0).toLocaleString();
+
+async function loadMis() {
+  const month = $('#m-month').value || '', compare = $('#m-compare').value;
+  let s;
+  try { s = await api(`/api/mis/summary?compare=${compare}${month ? '&month=' + month : ''}`); }
+  catch (e) { msg('#m-notice', e.message, 'err'); return; }
+  mis.data = s;
+  const sel = $('#m-month');
+  const months = s.months.includes(s.month) ? s.months : [s.month, ...s.months];
+  sel.innerHTML = months.map(m => { const [y, mm] = m.split('-'); return `<option value="${m}">${new Date(+y, +mm - 1, 1).toLocaleString('en', {month: 'long'})} ${y}</option>`; }).join('');
+  sel.value = s.month;
+  const notes = [];
+  if (!s.dataset.engagements) notes.push(['warn', 'No tracker data yet. Use "Update tracker data" to upload your project tracker.']);
+  if (s.dataset.missing_required.length) notes.push(['warn', `The last import could not find: ${s.dataset.missing_required.join(', ')}. Open "Update tracker data" to match these columns.`]);
+  if (s.dataset.unmapped_optional.length) notes.push(['warn', `Not in the last import, so these sections stay empty: ${s.dataset.unmapped_optional.join(', ')}.`]);
+  $('#m-notice').innerHTML = notes.map(([k, t]) => `<div class="${k}">${esc(t)}</div>`).join('');
+  $('#m-body').classList.toggle('hidden', !s.dataset.engagements);
+  if (!s.dataset.engagements) return;
+  renderHeadline(s); renderSummaryTables(s); renderPie(s); renderLine(s); loadMisList(s);
+}
+
+function renderHeadline(s) {
+  const cols = [...s.types, 'Total'];
+  const mv = m => `<span class="mv-${m.direction}">${m.direction === 'up' ? '▲ ' : m.direction === 'down' ? '▼ ' : ''}${esc(m.text)}</span>`;
+  $('#m-headline').innerHTML =
+    `<tr><th class="desc" rowspan="2">Description</th><th class="cur" colspan="${cols.length}">${esc(s.month_label)}</th><th class="cmp" colspan="${cols.length}">${esc(s.compare_label)}</th><th rowspan="2">Movement<br>(in %)</th></tr>` +
+    `<tr>${cols.map(c => `<th class="cur-sub">${esc(c)}</th>`).join('')}${cols.map(c => `<th class="cmp-sub">${esc(c)}</th>`).join('')}</tr>` +
+    s.headline.map(h => `<tr><td class="desc">${esc(h.name)}</td>${cols.map(c => `<td class="num ${c === 'Total' ? 'tot' : ''}">${n0(h.current[c])}</td>`).join('')}${cols.map(c => `<td class="num ${c === 'Total' ? 'tot' : ''}">${n0(h.compare[c])}</td>`).join('')}<td>${mv(h.movement)}</td></tr>`).join('');
+}
+
+function sumTable(sel, headers, rows, total, empty) {
+  const el = $(sel); el.className = 'sum';
+  el.innerHTML = `<tr>${headers.map((h, i) => `<th class="${i ? 'n' : ''}">${esc(h)}</th>`).join('')}</tr>` +
+    (rows.length ? rows.map(r => `<tr>${r.map((v, i) => `<td class="${i ? 'n' : ''}">${i ? n0(v) : esc(v)}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${headers.length}" class="muted">${esc(empty)}</td></tr>`) +
+    (total && rows.length ? `<tr class="total">${total.map((v, i) => `<td class="${i ? 'n' : ''}">${i ? n0(v) : esc(v)}</td>`).join('')}</tr>` : '');
+}
+
+function renderSummaryTables(s) {
+  const t = s.resource_totals;
+  sumTable('#m-res', ['Name', 'As Delivery Lead', 'As Primary Resource', 'As Secondary Resource'],
+    s.resources.map(r => [r.name, r.lead, r.primary, r.secondary]), ['Total', t.lead, t.primary, t.secondary],
+    'No resources recorded for engagements delivered this month.');
+  sumTable('#m-types', ['Project Type', 'No. of Projects', 'No. of KPIs executed'],
+    s.project_types.map(r => [r.type, r.projects, r.kpis]), ['Total', s.project_type_totals.projects, s.project_type_totals.kpis], '');
+  sumTable('#m-partners', ['Partner Name', 'No. of Engagements'], s.partners.map(p => [p.partner, p.engagements]),
+    ['Total', s.partners.reduce((a, p) => a + p.engagements, 0)], 'No engagements delivered this month.');
+}
+
+const sliceLabels = {id: 'sliceLabels', afterDatasetsDraw(chart) {
+  const {ctx} = chart, meta = chart.getDatasetMeta(0), data = chart.data.datasets[0].data;
+  ctx.save(); ctx.font = '600 13px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  meta.data.forEach((arc, i) => {
+    if (!data[i]) return;
+    const p = arc.tooltipPosition(), bg = arc.options.backgroundColor || '#000';
+    const [r, g, b] = (bg.match(/[0-9a-f]{2}/gi) || ['00', '00', '00']).slice(0, 3).map(h => parseInt(h, 16));
+    ctx.fillStyle = (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#1B2430' : '#FFFFFF';
+    ctx.fillText(data[i], p.x, p.y);
+  });
+  ctx.restore();
+}};
+
+function renderPie(s) {
+  if (typeof Chart === 'undefined') return;
+  const rows = s.regions, total = rows.reduce((a, r) => a + r.engagements, 0);
+  $('#m-pie-title').textContent = `Engagement distribution by region, ${s.month_label}`;
+  mis.pie?.destroy();
+  mis.pie = new Chart($('#m-pie'), {type: 'pie',
+    data: {labels: rows.map(r => r.region), datasets: [{data: rows.map(r => r.engagements),
+      backgroundColor: rows.map((_, i) => cssVar(REGION_COLORS[i % REGION_COLORS.length])), borderColor: '#fff', borderWidth: 2}]},
+    options: {maintainAspectRatio: false, plugins: {
+      legend: {position: 'bottom', labels: {generateLabels: c => Chart.overrides.pie.plugins.legend.labels.generateLabels(c).map((l, i) => ({...l, text: `${rows[i].region} (${rows[i].engagements})`}))}},
+      tooltip: {callbacks: {label: c => `${c.label}: ${c.raw} engagements (${total ? Math.round(c.raw / total * 100) : 0}%)`}}}},
+    plugins: [sliceLabels]});
+}
+
+function renderLine(s) {
+  if (typeof Chart === 'undefined') return;
+  const metric = $('#m-metric').value, label = metric === 'kpis' ? 'KPIs executed' : 'Engagements delivered';
+  const blue = cssVar('var(--series-1)');
+  mis.line?.destroy();
+  mis.line = new Chart($('#m-line'), {type: 'line',
+    data: {labels: s.trend.map(t => t.label), datasets: [{label, data: s.trend.map(t => t[metric]), borderColor: blue, backgroundColor: blue, borderWidth: 2, tension: .25,
+      pointRadius: s.trend.map((_, i) => i === s.trend.length - 1 ? 5 : 3), pointHoverRadius: 6}]},
+    options: {maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => `${label}: ${n0(c.raw)}`}}},
+      scales: {y: {beginAtZero: true, grid: {color: '#E6E9ED'}, ticks: {precision: 0}}, x: {grid: {display: false}}}}});
+}
+$('#m-metric').onchange = () => mis.data && renderLine(mis.data);
+$('#m-month').onchange = loadMis; $('#m-compare').onchange = loadMis;
+
+async function loadMisList(s) {
+  const rows = await api(`/api/mis/engagements?month=${s.month}`);
+  $('#m-details-title').textContent = `Engagements delivered in ${s.month_label} (${rows.length})`;
+  $('#m-list').innerHTML = '<tr><th>Project</th><th>Entity</th><th>Type</th><th class="n">KPIs delivered</th><th>Delivered on</th><th>Partner</th><th>Region</th><th>Delivery lead</th><th>Primary</th><th>Secondary</th></tr>' +
+    rows.map(r => `<tr><td>${esc(r.project_name)}</td><td>${esc(r.entity_name || '')}</td><td>${esc(r.project_type)}</td><td class="n">${r.kpis_delivered ?? '–'}</td><td>${esc(r.actual_date)}</td><td>${esc(r.partner || '')}</td><td>${esc(r.region || '')}</td><td>${esc(r.delivery_lead || '')}</td><td>${esc(r.primary_resource || '')}</td><td>${esc(r.secondary_resource || '')}</td></tr>`).join('');
+}
+
+$('#m-xlsx').onclick = () => mis.data && download(`/api/mis/summary.xlsx?month=${mis.data.month}&compare=${mis.data.compare}`, `MIS_summary_${mis.data.month}.xlsx`);
+$('#m-sample').onclick = () => download('/api/tracker/sample', 'sample_project_tracker.xlsx');
+$('#m-update').onclick = () => { const p = $('#m-upload'); p.classList.toggle('hidden'); $('#m-update').setAttribute('aria-expanded', String(!p.classList.contains('hidden'))); };
+$('#m-import').onclick = async () => {
+  const f = $('#m-file').files[0]; if (!f) return msg('#m-result', 'Choose the tracker file first.', 'warn');
+  const fd = new FormData(); fd.append('file', f); fd.append('mode', $('#m-mode').value);
+  msg('#m-result', 'Importing…', 'warn');
+  try { showImport(await api('/api/tracker/import', {method: 'POST', body: fd})); await loadMis(); }
+  catch (e) { msg('#m-result', e.message, 'err'); }
+};
+
+function showImport(r) {
+  mis.lastImport = r;
+  const head = r.status === 'completed'
+    ? `<div class="${r.missing.length ? 'warn' : 'ok'}">Imported ${n0(r.engagements)} engagements from sheet "${esc(r.sheet)}" (header on row ${r.header_row}): ${n0(r.delivered)} delivered, ${n0(r.not_delivered)} not yet delivered.${r.missing.length ? ' Some required columns were not found; match them below.' : ''}</div>`
+    : `<div class="err">${esc(r.error || 'Import failed')}</div>`;
+  const warns = Object.entries(r.warnings || {}).map(([k, w]) => `<li>${esc(k)}: ${w.count} row(s) <span class="muted">${esc(w.rows.join('; '))}</span></li>`).join('');
+  const opts = ['<option value="">Not in file</option>', ...r.headers.filter(h => h.text).map(h => `<option value="${h.index}">${esc(h.letter)} – ${esc(h.text)}</option>`)].join('');
+  const rows = r.fields.map(f => `<tr><td>${esc(f.label)}${f.required ? ' <span class="pill submitted">needed</span>' : ''}</td><td><select data-field="${f.field}" aria-label="${esc(f.label)}">${opts}</select></td></tr>`).join('');
+  $('#m-result').innerHTML = head + (warns ? `<div class="warn"><strong>Check these rows in the tracker</strong><ul style="margin:6px 0 0 18px;padding:0">${warns}</ul></div>` : '') +
+    (r.headers.length ? `<details ${r.missing.length || r.status !== 'completed' ? 'open' : ''}><summary>Columns used from your file</summary><p class="muted">Change a match if it is wrong; your choice is remembered for the next upload.</p><div class="scroll"><table><tr><th>Field</th><th>Column in your tracker</th></tr>${rows}</table></div><div class="bar" style="margin-top:10px"><button class="btn" id="m-remap">Re-import with these columns</button></div></details>` : '');
+  document.querySelectorAll('#m-result select[data-field]').forEach(sel => { const v = r.mapping[sel.dataset.field]; sel.value = v === null || v === undefined ? '' : String(v); });
+  const btn = $('#m-remap');
+  if (btn) btn.onclick = async () => {
+    const mapping = {}; document.querySelectorAll('#m-result select[data-field]').forEach(sel => mapping[sel.dataset.field] = sel.value === '' ? null : +sel.value);
+    try { showImport(await api(`/api/tracker/import/${r.id}/remap`, {method: 'POST', json: {mapping, mode: $('#m-mode').value}})); await loadMis(); toast('Re-imported with your column choices'); }
+    catch (e) { toast(e.message, 'err'); }
+  };
+}
+
 // ---------- data entry ----------
 async function loadEntry() {
   const pid = $('#e-period').value, bid = $('#e-bu').value; if (!pid || !bid) return;
@@ -570,7 +759,7 @@ for (const [id, path, label] of [['#s-bu-form', '/api/business-units', 'Business
 }
 
 // ---------- boot ----------
-const loaders = {dashboard: loadDashboard, entry: loadEntry, upload: loadJobs, approvals: loadApprovals,
+const loaders = {dashboard: loadMis, scorecard: loadDashboard, entry: loadEntry, upload: loadJobs, approvals: loadApprovals,
   commentary: loadCommentary, documents: loadDocuments, setup: loadSetup};
 async function refreshAll() {
   try {

@@ -174,3 +174,35 @@ class Commentary(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Engagement(Base):
+    """One row of the team's project tracker (one engagement / project)."""
+    __tablename__ = "engagements"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    import_job_id: Mapped[int | None] = mapped_column(ForeignKey("processing_jobs.id"), index=True)
+    source_row: Mapped[int] = mapped_column(Integer, default=0)
+    project_name: Mapped[str] = mapped_column(String(300), index=True)
+    entity_name: Mapped[str | None] = mapped_column(String(300))
+    project_type: Mapped[str] = mapped_column(String(20), default="Other", index=True)  # Stat | IA | Tax | Other
+    project_type_raw: Mapped[str | None] = mapped_column(String(60))
+    kpis_planned: Mapped[float | None] = mapped_column(Float)
+    kpis_delivered: Mapped[float | None] = mapped_column(Float)
+    expected_date: Mapped[date | None] = mapped_column(Date)
+    actual_date: Mapped[date | None] = mapped_column(Date, index=True)   # delivery date -> delivery month
+    business_area: Mapped[str | None] = mapped_column(String(200))
+    engagement_period: Mapped[str | None] = mapped_column(String(60))
+    erp: Mapped[str | None] = mapped_column(String(100))
+    partner: Mapped[str | None] = mapped_column(String(200))
+    region: Mapped[str | None] = mapped_column(String(60))
+    delivery_lead: Mapped[str | None] = mapped_column(String(300))
+    primary_resource: Mapped[str | None] = mapped_column(String(300))
+    secondary_resource: Mapped[str | None] = mapped_column(String(300))
+    file_count: Mapped[float | None] = mapped_column(Float)
+    file_size_mb: Mapped[float | None] = mapped_column(Float)
+
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[dict | None] = mapped_column(JSON)

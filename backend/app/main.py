@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 
 from .config import get_settings
 from .database import init_db
-from .routers import commentary, files, reports, setup, values
+from .routers import commentary, engagements, files, reports, setup, values
 from .services.llm import model_name
 
 FRONTEND = Path(__file__).resolve().parents[2] / "frontend" / "index.html"
@@ -21,7 +21,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title=get_settings().app_name, version="1.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-for r in (setup.router, values.router, files.router, reports.router, commentary.router):
+for r in (setup.router, values.router, files.router, reports.router, commentary.router, engagements.router):
     app.include_router(r)
 
 

@@ -7,7 +7,8 @@ from datetime import date
 from sqlalchemy import select
 
 from .database import SessionLocal, init_db
-from .models import KPI, BusinessUnit, KPIValue, ProcessingJob, ReportingPeriod
+from .models import KPI, BusinessUnit, Engagement, KPIValue, ProcessingJob, ReportingPeriod
+from .services.demo_tracker import demo_records
 from .services.consolidation import run_consolidation_job
 
 BUS = [("RETAIL", "Retail Banking"), ("CORP", "Corporate Banking"), ("OPS", "Operations")]
@@ -41,6 +42,11 @@ BU_PERF = {"RETAIL": {"REVENUE": 1.03, "OPEX": 0.97, "CSAT": 1.04},
 def run():
     init_db()
     with SessionLocal() as db:
+        if not db.scalar(select(Engagement)):
+            db.add_all(Engagement(source_row=i, **{**rec, "project_type_raw": rec["project_type"]})
+                       for i, rec in enumerate(demo_records(), start=15))
+            db.commit()
+            print("Seeded demo tracker engagements")
         if db.scalar(select(KPI)):
             print("Already seeded")
             return

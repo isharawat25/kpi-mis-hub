@@ -37,6 +37,32 @@ cd backend && pytest -q        # 11 tests: formulas, validation, approvals, cons
 6. **Commentary** → *Generate draft* → edit → *Send for review* → approver approves → *Publish*.
 7. **Documents** → upload a policy/definitions file → **Ask the data** → ask a question.
 
+
+## Monthly MIS summary (Dashboard)
+
+The Dashboard reads your **project tracker** (one row per engagement) and shows, for a chosen month:
+
+- Engagements delivered and KPIs executed, split Stat / IA / Tax, against **the same month last year or the previous month**, with the movement in %
+- Resources (as delivery lead, primary, secondary), project type, partners
+- Engagement distribution by region (pie) and a 14-month month-by-month line
+- **Download summary (Excel)**: the same tables, native charts, and the list of delivered engagements
+
+Rules: an engagement is *delivered* in the month of its **actual delivery date**; *KPIs executed* is the sum of
+**Number of KPIs delivered** on those engagements. Rows without an actual date are counted as not yet delivered.
+
+Upload: Dashboard → **Update tracker data**. The file can be kept as it is (legend rows above the table, two-row
+headers such as *Step 4 - KPI Execution / Number of KPIs Delivered*, blank cells). Columns are matched by their
+header words; if a match is wrong, change it under **Columns used from your file** and re-import. The choice is
+remembered. Use **Keep and add this file** to load last year's tracker for year-on-year comparison.
+**Download sample tracker** shows the expected columns.
+
+Columns used: Project Name, Project Type, Number of KPIs Delivered, Actual Date of Delivery (needed); Entity Name,
+Partner Name, Region, Delivery Lead, Primary Resource, Secondary Resource, Number of KPIs in scope, Expected Date,
+Business area, Engagement period, ERP, File size, No of Files (optional). Several names in one resource cell can be
+separated by commas, "/", "&" or "and".
+
+The earlier KPI matrix is now under **KPI scorecard**.
+
 ## How the phases map to code
 
 | Phase | Requirement | Where |
